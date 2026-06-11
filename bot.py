@@ -14,7 +14,7 @@ CHANNELS = [
     "@darinsight",
 ]
 
-# ================= ПОЛНАЯ КОЛОДА ТАРО (78 карт) =================
+# ================= ПОЛНАЯ КОЛОДА ТАРО =================
 tarot_deck = [
     "🃏 **0 - Дурак** — Новый путь, спонтанность, вера, риск",
     "🔮 **I - Маг** — Мастерство, сила воли, концентрация",
@@ -39,7 +39,6 @@ tarot_deck = [
     "🎺 **XX - Суд** — Пробуждение, возрождение",
     "🌍 **XXI - Мир** — Завершение, гармония",
 
-    # Младшие Арканы
     "🔥 **Туз Жезлов** — Новое начало, вдохновение",
     "🔥 **Двойка Жезлов** — Планирование, выбор пути",
     "🔥 **Тройка Жезлов** — Расширение, ожидание",
@@ -172,8 +171,7 @@ async def psychology_menu(call: CallbackQuery):
         "🧠 <b>Психология</b>\n\n"
         "Я работаю с глубинной психологией, самооценкой, внутренним ребёнком и тревожностью.\n\n"
         "Ты уже подписана на мой канал с полезным контентом.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
-    )
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 # ================= ПЛАТНЫЕ УСЛУГИ =================
 @dp.callback_query(F.data == "paid_consult")
@@ -230,19 +228,22 @@ async def checklist(call: CallbackQuery):
 
 @dp.callback_query(F.data == "about")
 async def about(call: CallbackQuery):
-    kb = [[InlineKeyboardButton(text="↩️ Назад", callback_data="back_to_main")]]
+    kb = [[InlineKeyboardButton(text="↩️ Назад в главное меню", callback_data="back_to_main")]]
     await call.message.edit_text(
-        "ℹ️ <b>Обо мне</b>\n\n"
-        "Здесь будет информация обо мне и помощь.",
+        "ℹ️ <b>Обо мне / Помощь</b>\n\n"
+        "Здесь будет информация обо мне и ответы на частые вопросы.\n\n"
+        "Для записи на консультацию пишите @taro_darinsight",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
     )
 
 @dp.callback_query(F.data == "back_to_main")
 async def back_to_main(call: CallbackQuery):
+    await call.answer()
     await main_menu(call.message)
 
 @dp.callback_query(F.data == "check_sub")
 async def check_sub(call: CallbackQuery):
+    await call.answer()
     if await check_subscriptions(call.from_user.id):
         await call.message.edit_text("✅ <b>Подписка подтверждена!</b>\nДобро пожаловать ❤️")
         await main_menu(call.message)
