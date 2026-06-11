@@ -8,12 +8,37 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.client.default import DefaultBotProperties
 
 # ================= НАСТРОЙКИ =================
-BOT_TOKEN = "6303692408:AAHrB3RJbb2Anh6N9nXFCKbiD00MFAi8BKM"
+BOT_TOKEN = "ЗДЕСЬ_ВСТАВЬ_СВОЙ_ТОКЕН"
 
 CHANNELS = [
     "@darinsight_psy",
     "@darinsight",
 ]
+
+# ================= ГОРОСКОП =================
+zodiacs = {
+    "aries": "♈ Овен", "taurus": "♉ Телец", "gemini": "♊ Близнецы",
+    "cancer": "♋ Рак", "leo": "♌ Лев", "virgo": "♍ Дева",
+    "libra": "♎ Весы", "scorpio": "♏ Скорпион", "sagittarius": "♐ Стрелец",
+    "capricorn": "♑ Козерог", "aquarius": "♒ Водолей", "pisces": "♓ Рыбы"
+}
+
+def get_horoscope(sign: str):
+    try:
+        url = f"https://horoscopes.rambler.ru/{sign}/"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        
+        for selector in ["div.horoscope__text", "div.article__text", "p", "div.text"]:
+            elements = soup.select(selector)
+            for el in elements:
+                text = el.get_text(strip=True)
+                if len(text) > 120:
+                    return text[:1800]
+    except:
+        pass
+    return "😔 Не удалось загрузить гороскоп. Попробуйте позже."
 
 # ================= КАРТА ДНЯ =================
 def get_card_of_the_day():
@@ -29,27 +54,6 @@ def get_card_of_the_day():
     except:
         pass
     return "🃏 Не удалось загрузить Карту Дня. Попробуйте позже."
-
-# ================= ГОРОСКОП =================
-zodiacs = {
-    "aries": "♈ Овен", "taurus": "♉ Телец", "gemini": "♊ Близнецы",
-    "cancer": "♋ Рак", "leo": "♌ Лев", "virgo": "♍ Дева",
-    "libra": "♎ Весы", "scorpio": "♏ Скорпион", "sagittarius": "♐ Стрелец",
-    "capricorn": "♑ Козерог", "aquarius": "♒ Водолей", "pisces": "♓ Рыбы"
-}
-
-def get_horoscope(sign: str):
-    try:
-        url = f"https://horoscopes.rambler.ru/{sign}/"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        text = soup.find("p", class_=lambda x: x and "horoscope" in str(x).lower())
-        if text and len(text.get_text(strip=True)) > 50:
-            return text.get_text(strip=True)
-    except:
-        pass
-    return "Не удалось загрузить гороскоп. Попробуйте позже."
 
 # ============================================
 
@@ -126,7 +130,7 @@ async def send_card_of_day(call: CallbackQuery):
 async def horoscope_menu(call: CallbackQuery):
     kb = [[InlineKeyboardButton(text=name, callback_data=f"hor_{code}")] for code, name in zodiacs.items()]
     kb.append([InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")])
-    await call.message.edit_text("🌟 <b>Гороскоп на сегодня</b>\nВыберите знак зодиака:", 
+    await call.message.edit_text("🌟 <b>Гороскоп на сегодня</b>\n\nВыберите знак зодиака:", 
                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 @dp.callback_query(F.data.startswith("hor_"))
@@ -150,19 +154,22 @@ async def order_spread(call: CallbackQuery):
 
 Привет! Я занимаюсь Таро уже 5 лет и смотрю на карты не как на магию, а как на мощный инструмент работы с бессознательным.
 
-Это глубокая психологическая работа. Я не провожу ритуалы и не даю «предсказаний судьбы» — только честный разбор через архетипы и психологию.
+Это глубокая психологическая работа: карты помогают вытащить на поверхность то, что ты уже знаешь внутри, но пока не можешь сформулировать сам. 
 
 <b>Что я предлагаю:</b>
-• Подбор расклада под твой запрос
-• Совместная формулировка вопросов
-• Полноценный расклад 60 минут в аудио
+• Помогаю правильно подобрать расклад под твой запрос
+• Вместе формулируем точные вопросы
+• Делаю полноценный личный расклад 60 минут в аудиоформате
 • Аудио остаётся у тебя навсегда
 
-<b>Важно:</b> Не работаю с темами смерти, здоровья и беременности.
+<b>Важные ограничения:</b>
+❌ Не работаю с темами смерти, здоровья и беременности
 
-Готовы начать глубокий разбор?"""
-    kb = [[InlineKeyboardButton(text="Записаться", url="https://t.me/taro_darinsight")],
-          [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")]]
+Готов погрузиться в настоящий психологический разбор?"""
+    kb = [
+        [InlineKeyboardButton(text="Записаться", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")]
+    ]
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 # ================= ТАРО-ПРОФИЛЬ =================
@@ -170,18 +177,21 @@ async def order_spread(call: CallbackQuery):
 async def birth_profile(call: CallbackQuery):
     text = """🃏 <b>Таро-профиль по дате рождения за 5475 ₽</b>
 
-Персональный психологический портрет на 8–10 страниц в красивом PDF.
+Персональный психологический портрет на 8-10 страниц в красивом PDF.
 
 <b>Что внутри:</b>
-• Подробный разбор вашего Аркана
+• Титульная страница с вашим Арканом
+• Подробный психологический портрет
 • Сильные стороны и таланты
 • Теневые аспекты и вызовы
 • Проявление в отношениях, карьере, саморазвитии
 • Практические рекомендации
 
 Пришлите дату рождения после оплаты."""
-    kb = [[InlineKeyboardButton(text="Написать", url="https://t.me/taro_darinsight")],
-          [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")]]
+    kb = [
+        [InlineKeyboardButton(text="Написать", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")]
+    ]
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 # ================= АРКАН МЕСЯЦА =================
@@ -196,36 +206,40 @@ async def month_arcan(call: CallbackQuery):
 <b>Что ты получишь в PDF:</b>
 • Титульная страница с Арканом Месяца + изображением карты
 • Подробный психологический портрет энергии месяца
-• Ресурсы и возможности
+• Ресурсы, возможности, таланты
 • Главные вызовы и теневая сторона
 • Как лучше проживать этот месяц
 • Практические рекомендации
 
-Объём: 3–5 страниц. Срок: в течение 24 часов."""
-    kb = [[InlineKeyboardButton(text="Заказать", url="https://t.me/taro_darinsight")],
-          [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")]]
+Объём: 3–5 страниц. Срок: до 24 часов."""
+    kb = [
+        [InlineKeyboardButton(text="Заказать", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")]
+    ]
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-# ================= ПСИХОЛОГИЯ =================
+# ================= ЧЕК-ЛИСТ =================
 @dp.callback_query(F.data == "checklist")
 async def checklist(call: CallbackQuery):
     text = """📋 <b>Получить чек-лист</b>
 
-Здесь можно вставить ссылку на чек-лист (отредактируй код и укажи свою ссылку).
+Здесь можно вставить свою ссылку на чек-лист.
 
-Например:
-https://твоя_ссылка_на_чеклист.pdf"""
-    kb = [[InlineKeyboardButton(text="Получить чек-лист", url="https://t.me/taro_darinsight")],  # ← Замени на свою ссылку
-          [InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_section")]]
+(Отредактируй код и замени ссылку ниже на свою)"""
+    kb = [
+        [InlineKeyboardButton(text="Получить чек-лист", url="https://t.me/taro_darinsight")],  # ← Замени на свою ссылку
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_section")]
+    ]
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
+# ================= ЗАПИСАТЬСЯ НА КОНСУЛЬТАЦИЮ =================
 @dp.callback_query(F.data == "consultation")
 async def consultation(call: CallbackQuery):
     text = """🪴 <b>Записаться на консультацию</b>
 
 Привет, я Дарья — психолог, гештальт-терапевт.
 
-С 2023 года помогаю взрослым людям обретать ясность, внутреннюю опору и направление в периоды тревоги и эмоционального хаоса.
+С 2023 года помогаю взрослым людям обретать ясность, внутреннюю опору и направление в периоды тревоги, эмоционального хаоса и потери смысла.
 
 <b>Мой подход:</b>
 • Гештальт-терапия
@@ -233,14 +247,14 @@ async def consultation(call: CallbackQuery):
 • Элементы арт-терапии
 
 <b>Форматы:</b>
-• Стандартная консультация — 50 минут
-• Двойная консультация — 100 минут
+• 50 минут — стандартная консультация
+• 100 минут — двойная консультация
 
-Провожу онлайн и очно в Санкт-Петербурге.
-
-<b>Не работаю с:</b> ПТСР, РПП, подростками и детьми."""
-    kb = [[InlineKeyboardButton(text="Записаться", url="https://t.me/taro_darinsight")],
-          [InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_section")]]
+Провожу онлайн и очно в Санкт-Петербурге."""
+    kb = [
+        [InlineKeyboardButton(text="Записаться", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_section")]
+    ]
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 # ================= ОБО МНЕ =================
@@ -252,11 +266,13 @@ async def about(call: CallbackQuery):
 
 Я создала этот бот, чтобы вся полезная информация, услуги и возможности были собраны в одном удобном месте.
 
-Работаю на стыке психологии и Таро как психологического инструмента. Здесь нет мистики — только глубокая, честная и бережная работа с собой.
+Работаю на стыке психологии и Таро как мощного психологического инструмента. Здесь нет мистики — только честная и бережная работа с собой.
 
 Если вы здесь — значит уже сделали важный шаг к себе. Я рада быть рядом на этом пути ✨"""
-    kb = [[InlineKeyboardButton(text="Спросить", url="https://t.me/taro_darinsight")],
-          [InlineKeyboardButton(text="↩️ В главное меню", callback_data="back_to_main")]]
+    kb = [
+        [InlineKeyboardButton(text="Спросить", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ В главное меню", callback_data="back_to_main")]
+    ]
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 # ================= НАВИГАЦИЯ =================
