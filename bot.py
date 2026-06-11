@@ -8,7 +8,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.client.default import DefaultBotProperties
 
 # ================= НАСТРОЙКИ =================
-BOT_TOKEN = "ЗДЕСЬ_ВСТАВЬ_СВОЙ_ТОКЕН"
+BOT_TOKEN = "6303692408:AAHrB3RJbb2Anh6N9nXFCKbiD00MFAi8BKM"
 
 CHANNELS = [
     "@darinsight_psy",
