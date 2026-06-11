@@ -10,13 +10,12 @@ from aiogram.client.default import DefaultBotProperties
 BOT_TOKEN = "6303692408:AAHrB3RJbb2Anh6N9nXFCKbiD00MFAi8BKM"
 
 CHANNELS = [
-    "@darinsight_psy",   # ← Замени
-    "@darinsight",   # ← Замени
+    "@darinsight_psy",
+    "@darinsight",
 ]
 
 # ================= ПОЛНАЯ КОЛОДА ТАРО (78 карт) =================
 tarot_deck = [
-    # Старшие Арканы
     "🃏 **0 - Дурак** — Новый путь, спонтанность, вера, риск",
     "🔮 **I - Маг** — Мастерство, сила воли, концентрация",
     "🌙 **II - Верховная Жрица** — Интуиция, тайна, внутренний голос",
@@ -40,7 +39,7 @@ tarot_deck = [
     "🎺 **XX - Суд** — Пробуждение, возрождение",
     "🌍 **XXI - Мир** — Завершение, гармония",
 
-    # Младшие Арканы - Жезлы
+    # Младшие Арканы
     "🔥 **Туз Жезлов** — Новое начало, вдохновение",
     "🔥 **Двойка Жезлов** — Планирование, выбор пути",
     "🔥 **Тройка Жезлов** — Расширение, ожидание",
@@ -56,7 +55,6 @@ tarot_deck = [
     "🔥 **Королева Жезлов** — Харизма, уверенность",
     "🔥 **Король Жезлов** — Лидерство, видение",
 
-    # Кубки
     "💖 **Туз Кубков** — Новые эмоции, любовь",
     "💖 **Двойка Кубков** — Партнёрство, взаимная любовь",
     "💖 **Тройка Кубков** — Дружба, праздник",
@@ -72,12 +70,11 @@ tarot_deck = [
     "💖 **Королева Кубков** — Эмпатия, интуиция",
     "💖 **Король Кубков** — Эмоциональная зрелость",
 
-    # Мечи
     "⚔️ **Туз Мечей** — Ясность, правда",
     "⚔️ **Двойка Мечей** — Трудный выбор",
     "⚔️ **Тройка Мечей** — Боль, предательство",
     "⚔️ **Четвёрка Мечей** — Отдых, восстановление",
-    "⚔️ **Пятёрка Мечей** — Конфликт, победа любой ценой",
+    "⚔️ **Пятёрка Мечей** — Конфликт",
     "⚔️ **Шестёрка Мечей** — Переход, уход от проблем",
     "⚔️ **Семёрка Мечей** — Хитрость, стратегия",
     "⚔️ **Восьмёрка Мечей** — Чувство ловушки",
@@ -88,7 +85,6 @@ tarot_deck = [
     "⚔️ **Королева Мечей** — Честность, ясность ума",
     "⚔️ **Король Мечей** — Интеллект, авторитет",
 
-    # Пентакли
     "💰 **Туз Пентаклей** — Новые финансовые возможности",
     "💰 **Двойка Пентаклей** — Баланс дел",
     "💰 **Тройка Пентаклей** — Мастерство, работа",
@@ -113,7 +109,6 @@ def get_random_cards(n: int = 3):
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 
-# Проверка подписки (оставляем как было)
 async def check_subscriptions(user_id: int) -> bool:
     for channel in CHANNELS:
         try:
@@ -126,13 +121,13 @@ async def check_subscriptions(user_id: int) -> bool:
 
 def get_subscribe_keyboard():
     kb = [
-        [InlineKeyboardButton(text="📢 Подписаться на канал 1", url="https://t.me/darinsight_psy")],
-        [InlineKeyboardButton(text="📢 Подписаться на канал 2", url="https://t.me/darinsight")],
-        [InlineKeyboardButton(text="✅ Я подписался(ась)", callback_data="check_sub")]
+        [InlineKeyboardButton(text="📢 Подписаться на darinsight_psy", url="https://t.me/darinsight_psy")],
+        [InlineKeyboardButton(text="📢 Подписаться на darinsight", url="https://t.me/darinsight")],
+        [InlineKeyboardButton(text="✅ Я подписалась", callback_data="check_sub")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# Главное меню
+# ================= ГЛАВНОЕ МЕНЮ =================
 async def main_menu(message: Message):
     kb = [
         [InlineKeyboardButton(text="🔮 Расклады Таро", callback_data="tarot_menu")],
@@ -141,8 +136,7 @@ async def main_menu(message: Message):
     ]
     await message.answer(
         "🎴 <b>Таро и Психология с Дарьей</b>\n\n"
-        "Здесь ты можешь получить глубокие ответы через Таро и психологию.\n\n"
-        "Что выбираешь сегодня? 👇",
+        "Выбери раздел 👇",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
     )
 
@@ -150,17 +144,23 @@ async def main_menu(message: Message):
 @dp.callback_query(F.data == "tarot_menu")
 async def tarot_menu(call: CallbackQuery):
     kb = [
-        [InlineKeyboardButton(text="🃏 Карта дня (1 карта)", callback_data="spread_1")],
-        [InlineKeyboardButton(text="📅 Расклад на неделю", callback_data="spread_week")],
+        [InlineKeyboardButton(text="🃏 Карта дня", callback_data="spread_1")],
         [InlineKeyboardButton(text="💎 Заказать личный расклад", callback_data="paid_consult")],
-        [InlineKeyboardButton(text="🌟 Таро-профиль по дате рождения", callback_data="paid_birth")],
+        [InlineKeyboardButton(text="🌟 Таро-профиль по дате рождения", callback_data="paid_profile")],
         [InlineKeyboardButton(text="🔥 Аркан месяца по дате рождения", callback_data="paid_month")],
         [InlineKeyboardButton(text="↩️ Назад", callback_data="back_to_main")]
     ]
-    await call.message.edit_text("🔮 <b>Расклады Таро</b>\n\nВыбери нужный формат:", 
+    await call.message.edit_text("🔮 <b>Расклады Таро</b>\n\nВыбери нужное:", 
                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
-# ================= МЕНЮ ПСИХОЛОГИИ =================
+@dp.callback_query(F.data == "spread_1")
+async def card_of_day(call: CallbackQuery):
+    card = random.choice(tarot_deck)
+    kb = [[InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_menu")]]
+    await call.message.edit_text(f"🃏 <b>Твоя Карта Дня</b>\n\n{card}", 
+                                reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+
+# ================= ПСИХОЛОГИЯ =================
 @dp.callback_query(F.data == "psychology_menu")
 async def psychology_menu(call: CallbackQuery):
     kb = [
@@ -170,46 +170,76 @@ async def psychology_menu(call: CallbackQuery):
     ]
     await call.message.edit_text(
         "🧠 <b>Психология</b>\n\n"
-        "Я работаю с глубинной психологией, внутренним ребёнком, тревогой и самооценкой.\n\n"
-        "Ты уже подписана на мой канал с полезным контентом по психологии.",
+        "Я работаю с глубинной психологией, самооценкой, внутренним ребёнком и тревожностью.\n\n"
+        "Ты уже подписана на мой канал с полезным контентом.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
     )
 
-# ================= ОБРАБОТЧИКИ =================
-@dp.callback_query(F.data == "back_to_main")
-async def back_to_main(call: CallbackQuery):
-    await main_menu(call.message)
-
-@dp.callback_query(F.data == "spread_1")
-async def card_of_day(call: CallbackQuery):
-    card = random.choice(tarot_deck)
-    await call.message.edit_text(f"🃏 <b>Твоя Карта Дня:</b>\n\n{card}")
-
-@dp.callback_query(F.data == "spread_week")
-async def spread_week(call: CallbackQuery):
-    cards = get_random_cards(3)
-    text = "📅 <b>Расклад на неделю</b>\n\n"
-    days = ["Понедельник", "Среда", "Пятница"]
-    for day, card in zip(days, cards):
-        text += f"<b>{day}:</b> {card}\n\n"
-    await call.message.edit_text(text)
-
-@dp.callback_query(F.data.startswith("paid_"))
-async def paid_services(call: CallbackQuery):
+# ================= ПЛАТНЫЕ УСЛУГИ =================
+@dp.callback_query(F.data == "paid_consult")
+async def paid_consult(call: CallbackQuery):
+    kb = [
+        [InlineKeyboardButton(text="💬 Записаться ко мне", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_menu")]
+    ]
     await call.message.edit_text(
         "💎 <b>Личная консультация</b>\n\n"
-        "Для записи на платный расклад, Таро-профиль или консультацию — напишите мне в личку @ваш_ник\n\n"
-        "Я отвечу в ближайшее время ❤️",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="↩️ Назад", callback_data="back_to_main")]])
+        "• Таро + Психология (1 час)\n"
+        "• Глубокий разбор ситуации\n\n"
+        "💰 Цена: от 1500 ₽\n\n"
+        "Нажми кнопку ниже, чтобы записаться:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+    )
+
+@dp.callback_query(F.data == "paid_profile")
+async def paid_profile(call: CallbackQuery):
+    kb = [
+        [InlineKeyboardButton(text="💬 Записаться ко мне", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_menu")]
+    ]
+    await call.message.edit_text(
+        "🌟 <b>Таро-профиль по дате рождения</b>\n\n"
+        "Подробный разбор вашей энергетики (10-15 страниц)\n\n"
+        "💰 Стоимость: 999 – 1500 ₽\n\n"
+        "Нажми кнопку ниже для заказа:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+    )
+
+@dp.callback_query(F.data == "paid_month")
+async def paid_month(call: CallbackQuery):
+    kb = [
+        [InlineKeyboardButton(text="💬 Записаться ко мне", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_menu")]
+    ]
+    await call.message.edit_text(
+        "🔥 <b>Аркан месяца по дате рождения</b>\n\n"
+        "Личный Аркан + подробная расшифровка на месяц\n\n"
+        "💰 Стоимость: 349 ₽\n\n"
+        "Нажми кнопку ниже для заказа:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
     )
 
 @dp.callback_query(F.data == "checklist")
 async def checklist(call: CallbackQuery):
-    await call.message.edit_text("📝 Чек-лист скоро будет доступен (в разработке)")
+    kb = [[InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_menu")]]
+    await call.message.edit_text(
+        "📝 <b>Чек-лист по психологии</b>\n\n"
+        "Ссылка: [ВСТАВЬ ССЫЛКУ НА ЧЕК-ЛИСТ ЗДЕСЬ]",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+    )
 
 @dp.callback_query(F.data == "about")
 async def about(call: CallbackQuery):
-    await call.message.edit_text("ℹ️ Информация обо мне и помощь скоро будет добавлена.")
+    kb = [[InlineKeyboardButton(text="↩️ Назад", callback_data="back_to_main")]]
+    await call.message.edit_text(
+        "ℹ️ <b>Обо мне</b>\n\n"
+        "Здесь будет информация обо мне и помощь.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+    )
+
+@dp.callback_query(F.data == "back_to_main")
+async def back_to_main(call: CallbackQuery):
+    await main_menu(call.message)
 
 @dp.callback_query(F.data == "check_sub")
 async def check_sub(call: CallbackQuery):
@@ -226,14 +256,14 @@ async def start(message: Message):
         await main_menu(message)
     else:
         await message.answer(
-            "👋 <b>Добро пожаловать!</b>\n\n"
+            "👋 <b>Добро пожаловать в бот Таро и Психологии!</b>\n\n"
             "Для доступа к раскладам и материалам подпишись на два канала:",
             reply_markup=get_subscribe_keyboard()
         )
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    print("🤖 Бот Таро и Психологии успешно запущен!")
+    print("🤖 Бот успешно запущен!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
