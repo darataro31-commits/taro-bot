@@ -11,8 +11,8 @@ from aiogram.client.default import DefaultBotProperties
 BOT_TOKEN = "6303692408:AAHrB3RJbb2Anh6N9nXFCKbiD00MFAi8BKM"
 
 CHANNELS = [
-    "@твой_канал1",
-    "@твой_канал2",
+    "@darinsight_psy",
+    "@darinsight",
 ]
 
 # ================= ГОРОСКОП =================
@@ -51,8 +51,8 @@ dp = Dispatcher()
 
 def get_subscribe_keyboard():
     kb = [
-        [InlineKeyboardButton(text="📢 Подписаться на канал 1", url="https://t.me/твой_канал1")],
-        [InlineKeyboardButton(text="📢 Подписаться на канал 2", url="https://t.me/твой_канал2")],
+        [InlineKeyboardButton(text="📢 Подписаться на канал 1", url="https://t.me/darinsight_psy")],
+        [InlineKeyboardButton(text="📢 Подписаться на канал 2", url="https://t.me/darinsight")],
         [InlineKeyboardButton(text="✅ Я подписался(ась)", callback_data="check_sub")]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
