@@ -287,8 +287,8 @@ async def start(message: Message):
         await main_menu(message)
     else:
         await message.answer(
-            "👋 <b>Добро пожаловать в бот Таро и Психологии от Дарьи!</b>\n\n"
-            "Для доступа к контенту подпишитесь на два канала:",
+            "👋 <b>Добро пожаловать в пространство Darinsight, бот по Таро и Психологии от Дарьи!</b>\n\n"
+            "Для доступа к контенту подпишитесь на два моих канала:",
             reply_markup=get_subscribe_keyboard()
         )
 
