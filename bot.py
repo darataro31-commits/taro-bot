@@ -59,11 +59,18 @@ async def init_db():
             )
         """)
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS bot_messages (
+            CREATE TABLE IF NOT EXISTS broadcasts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT,
+                created_at TEXT
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS broadcast_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                broadcast_id INTEGER,
                 user_id INTEGER,
-                message_id INTEGER,
-                sent_at TEXT
+                message_id INTEGER
             )
         """)
         await db.execute("""
@@ -94,16 +101,10 @@ async def add_user(user_id: int, username: str = None, first_name: str = None):
 async def log_click(user_id: int, button: str):
     now = datetime.now().isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("INSERT INTO clicks (user_id, button, clicked_at) VALUES (?, ?, ?)",
-                         (user_id, button, now))
-        await db.commit()
-
-
-async def save_bot_message(user_id: int, message_id: int):
-    now = datetime.now().isoformat()
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("INSERT INTO bot_messages (user_id, message_id, sent_at) VALUES (?, ?, ?)",
-                         (user_id, message_id, now))
+        await db.execute(
+            "INSERT INTO clicks (user_id, button, clicked_at) VALUES (?, ?, ?)",
+            (user_id, button, now)
+        )
         await db.commit()
 
 
@@ -172,8 +173,7 @@ async def main_menu(message: Message):
     ])
     if message.from_user.id == ADMIN_ID:
         kb.inline_keyboard.append([InlineKeyboardButton(text="🛠 Админ-панель", callback_data="admin_panel")])
-    msg = await message.answer("🎴 <b>Главное меню Таро и Психологии от Дарьи</b>", reply_markup=kb)
-    await save_bot_message(message.from_user.id, msg.message_id)
+    await message.answer("🎴 <b>Главное меню Таро и Психологии от Дарьи</b>", reply_markup=kb)
 
 
 # ================= АДМИН-ПАНЕЛЬ =================
@@ -182,7 +182,7 @@ def admin_kb():
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
         [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
         [InlineKeyboardButton(text="⏰ Отложенная рассылка", callback_data="admin_schedule")],
-        [InlineKeyboardButton(text="🗑 Удалить сообщения бота у всех", callback_data="admin_delete_all")],
+        [InlineKeyboardButton(text="🗑 Удалить рассылку", callback_data="admin_delete_broadcast")],
         [InlineKeyboardButton(text="↩️ В меню", callback_data="back_to_main")]
     ])
 
@@ -202,29 +202,25 @@ async def admin_stats(call: CallbackQuery):
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT COUNT(*) FROM users") as c:
             total = (await c.fetchone())[0]
-
         async with db.execute(
             "SELECT user_id, username, first_name FROM users WHERE joined_at LIKE ? ORDER BY joined_at DESC LIMIT 20",
             (f"{today}%",)
         ) as c:
             new_users = await c.fetchall()
-
         async with db.execute(
             "SELECT user_id, username, first_name FROM users WHERE last_activity LIKE ? ORDER BY last_activity DESC LIMIT 20",
             (f"{today}%",)
         ) as c:
             active_users = await c.fetchall()
-
         async with db.execute("""
-            SELECT u.user_id, u.username, u.first_name, COUNT(*) 
+            SELECT u.user_id, u.username, u.first_name, COUNT(*)
             FROM clicks c JOIN users u ON c.user_id = u.user_id
             WHERE c.button = 'card_of_day' AND c.clicked_at LIKE ?
             GROUP BY u.user_id ORDER BY COUNT(*) DESC LIMIT 20
         """, (f"{today}%",)) as c:
             card_clicks = await c.fetchall()
-
         async with db.execute("""
-            SELECT u.user_id, u.username, u.first_name, COUNT(*) 
+            SELECT u.user_id, u.username, u.first_name, COUNT(*)
             FROM clicks c JOIN users u ON c.user_id = u.user_id
             WHERE c.button = 'horoscope' AND c.clicked_at LIKE ?
             GROUP BY u.user_id ORDER BY COUNT(*) DESC LIMIT 20
@@ -234,22 +230,16 @@ async def admin_stats(call: CallbackQuery):
     def fmt_users(rows):
         if not rows:
             return "нет"
-        lines = []
-        for r in rows:
-            uid, username, name = r[0], r[1], r[2]
-            uname = f"@{username}" if username else "без @"
-            lines.append(f"• <code>{uid}</code> {uname} ({name or '—'})")
-        return "\n".join(lines)
+        return "\n".join([
+            f"• <code>{r[0]}</code> @{r[1] or '—'} ({r[2] or '—'})" for r in rows
+        ])
 
     def fmt_clicks(rows):
         if not rows:
             return "нет"
-        lines = []
-        for r in rows:
-            uid, username, name, cnt = r
-            uname = f"@{username}" if username else "без @"
-            lines.append(f"• <code>{uid}</code> {uname} — {cnt} раз")
-        return "\n".join(lines)
+        return "\n".join([
+            f"• <code>{r[0]}</code> @{r[1] or '—'} — {r[3]} раз" for r in rows
+        ])
 
     text = f"""📊 <b>Статистика</b>
 
@@ -266,12 +256,12 @@ async def admin_stats(call: CallbackQuery):
 
 🌟 <b>Гороскоп сегодня:</b>
 {fmt_clicks(horo_clicks)}"""
-
     await call.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="↩️ Назад", callback_data="admin_panel")]
     ]))
 
 
+# ---------- РАССЫЛКА (с сохранением message_id) ----------
 @dp.callback_query(F.data == "admin_broadcast")
 async def admin_broadcast(call: CallbackQuery, state: FSMContext):
     if call.from_user.id != ADMIN_ID:
@@ -291,20 +281,112 @@ async def process_broadcast(message: Message, state: FSMContext):
         return
     text = message.html_text or message.text
     await state.clear()
+
+    # создаём запись о рассылке
     async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "INSERT INTO broadcasts (text, created_at) VALUES (?, ?)",
+            (text[:200], datetime.now().isoformat())
+        )
+        broadcast_id = cursor.lastrowid
+        await db.commit()
+
         async with db.execute("SELECT user_id FROM users") as cur:
             users = await cur.fetchall()
+
     ok, fail = 0, 0
-    for (uid,) in users:
+    async with aiosqlite.connect(DB_PATH) as db:
+        for (uid,) in users:
+            try:
+                msg = await bot.send_message(uid, text)
+                await db.execute(
+                    "INSERT INTO broadcast_messages (broadcast_id, user_id, message_id) VALUES (?, ?, ?)",
+                    (broadcast_id, uid, msg.message_id)
+                )
+                ok += 1
+                await asyncio.sleep(0.05)
+            except Exception:
+                fail += 1
+        await db.commit()
+
+    await message.answer(
+        f"✅ Рассылка завершена\nУспешно: {ok}\nОшибок: {fail}\nID рассылки: <code>{broadcast_id}</code>",
+        reply_markup=admin_kb()
+    )
+
+
+# ---------- УДАЛЕНИЕ КОНКРЕТНОЙ РАССЫЛКИ ----------
+@dp.callback_query(F.data == "admin_delete_broadcast")
+async def admin_delete_broadcast(call: CallbackQuery):
+    if call.from_user.id != ADMIN_ID:
+        return
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT id, text, created_at FROM broadcasts ORDER BY id DESC LIMIT 10"
+        ) as cur:
+            rows = await cur.fetchall()
+
+    if not rows:
+        return await call.message.edit_text(
+            "Нет сохранённых рассылок.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="↩️ Назад", callback_data="admin_panel")]
+            ])
+        )
+
+    buttons = []
+    for bid, text, created in rows:
+        short = (text[:40] + "…") if len(text) > 40 else text
+        date = created[:16].replace("T", " ")
+        buttons.append([InlineKeyboardButton(
+            text=f"#{bid} | {date} | {short}",
+            callback_data=f"del_bc_{bid}"
+        )])
+    buttons.append([InlineKeyboardButton(text="↩️ Назад", callback_data="admin_panel")])
+
+    await call.message.edit_text(
+        "🗑 <b>Выберите рассылку для удаления у всех пользователей:</b>",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
+
+
+@dp.callback_query(F.data.startswith("del_bc_"))
+async def delete_selected_broadcast(call: CallbackQuery):
+    if call.from_user.id != ADMIN_ID:
+        return
+
+    broadcast_id = int(call.data.replace("del_bc_", ""))
+    await call.message.edit_text(f"🗑 Удаляю рассылку #{broadcast_id}...")
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT user_id, message_id FROM broadcast_messages WHERE broadcast_id = ?",
+            (broadcast_id,)
+        ) as cur:
+            msgs = await cur.fetchall()
+
+    deleted = 0
+    for uid, mid in msgs:
         try:
-            await bot.send_message(uid, text)
-            ok += 1
-            await asyncio.sleep(0.05)
+            await bot.delete_message(uid, mid)
+            deleted += 1
+            await asyncio.sleep(0.03)
         except Exception:
-            fail += 1
-    await message.answer(f"✅ Рассылка завершена\nУспешно: {ok}\nОшибок: {fail}", reply_markup=admin_kb())
+            pass
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM broadcast_messages WHERE broadcast_id = ?", (broadcast_id,))
+        await db.execute("DELETE FROM broadcasts WHERE id = ?", (broadcast_id,))
+        await db.commit()
+
+    await call.message.edit_text(
+        f"✅ Рассылка #{broadcast_id} удалена\nУдалено сообщений: <b>{deleted}</b>",
+        reply_markup=admin_kb()
+    )
 
 
+# ---------- ОТЛОЖЕННАЯ РАССЫЛКА ----------
 @dp.callback_query(F.data == "admin_schedule")
 async def admin_schedule(call: CallbackQuery, state: FSMContext):
     if call.from_user.id != ADMIN_ID:
@@ -324,7 +406,9 @@ async def schedule_text(message: Message, state: FSMContext):
         return
     await state.update_data(text=message.html_text or message.text)
     await state.set_state(AdminStates.waiting_schedule_time)
-    await message.answer("Введите время в формате:\n<code>ДД.ММ.ГГГГ ЧЧ:ММ</code>\n\nНапример: <code>30.07.2026 10:00</code>")
+    await message.answer(
+        "Введите время в формате:\n<code>ДД.ММ.ГГГГ ЧЧ:ММ</code>\n\nПример: <code>30.07.2026 10:00</code>"
+    )
 
 
 @dp.message(AdminStates.waiting_schedule_time)
@@ -357,50 +441,30 @@ async def schedule_time(message: Message, state: FSMContext):
 
 
 async def do_scheduled_broadcast(text: str):
+    # создаём broadcast и сохраняем message_id
     async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "INSERT INTO broadcasts (text, created_at) VALUES (?, ?)",
+            (text[:200], datetime.now().isoformat())
+        )
+        broadcast_id = cursor.lastrowid
+        await db.commit()
+
         async with db.execute("SELECT user_id FROM users") as cur:
             users = await cur.fetchall()
+
+        for (uid,) in users:
+            try:
+                msg = await bot.send_message(uid, text)
+                await db.execute(
+                    "INSERT INTO broadcast_messages (broadcast_id, user_id, message_id) VALUES (?, ?, ?)",
+                    (broadcast_id, uid, msg.message_id)
+                )
+                await asyncio.sleep(0.05)
+            except Exception:
+                pass
         await db.execute("UPDATE scheduled SET status='done' WHERE text=? AND status='pending'", (text,))
         await db.commit()
-    for (uid,) in users:
-        try:
-            await bot.send_message(uid, text)
-            await asyncio.sleep(0.05)
-        except Exception:
-            pass
-
-
-@dp.callback_query(F.data == "admin_delete_all")
-async def admin_delete_all(call: CallbackQuery):
-    if call.from_user.id != ADMIN_ID:
-        return
-    await call.message.edit_text("🗑 Удаляю последние сообщения бота у всех пользователей...")
-
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("""
-            SELECT user_id, message_id FROM bot_messages
-            ORDER BY id DESC LIMIT 500
-        """) as cur:
-            msgs = await cur.fetchall()
-
-    deleted = 0
-    for uid, mid in msgs:
-        try:
-            await bot.delete_message(uid, mid)
-            deleted += 1
-            await asyncio.sleep(0.03)
-        except Exception:
-            pass
-
-    # очищаем таблицу после удаления
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM bot_messages")
-        await db.commit()
-
-    await call.message.edit_text(
-        f"✅ Удалено сообщений бота: <b>{deleted}</b>",
-        reply_markup=admin_kb()
-    )
 
 
 # ================= РАЗДЕЛЫ =================
@@ -444,8 +508,10 @@ async def horoscope_menu(call: CallbackQuery):
     await log_click(call.from_user.id, "horoscope")
     kb = [[InlineKeyboardButton(text=name, callback_data=f"hor_{code}")] for code, name in zodiacs.items()]
     kb.append([InlineKeyboardButton(text="↩️ Назад", callback_data="tarot_section")])
-    await call.message.edit_text("🌟 <b>Гороскоп на сегодня</b>\nВыберите знак:",
-                                reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+    await call.message.edit_text(
+        "🌟 <b>Гороскоп на сегодня</b>\nВыберите знак:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+    )
 
 
 @dp.callback_query(F.data.startswith("hor_"))
@@ -548,13 +614,13 @@ async def month_arcan(call: CallbackQuery):
 
 @dp.callback_query(F.data == "checklist")
 async def checklist(call: CallbackQuery):
-    text = """📋 <b>Получить мини-гайд </b>
+    text = """📋 <b>Получить чек-лист</b>
 
-Мини-гайд "Тревога под контролем"
+Здесь можно вставить свою ссылку на чек-лист.
 
-"""
+(Отредактируй код и замени ссылку в кнопке ниже на свою)"""
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Получить мини-гайд", url="https://t.me/darinsight_psy/43")],
+        [InlineKeyboardButton(text="Получить чек-лист", url="https://t.me/taro_darinsight")],
         [InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_section")]
     ])
     await call.message.edit_text(text, reply_markup=kb)
