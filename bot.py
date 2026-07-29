@@ -484,7 +484,7 @@ async def tarot_section(call: CallbackQuery):
 @dp.callback_query(F.data == "psychology_section")
 async def psychology_section(call: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Получить чек-лист", callback_data="checklist")],
+        [InlineKeyboardButton(text="📋 Получить мини-гайд", callback_data="checklist")],
         [InlineKeyboardButton(text="📅 Записаться на консультацию", callback_data="consultation")],
         [InlineKeyboardButton(text="↩️ В главное меню", callback_data="back_to_main")]
     ])
@@ -614,13 +614,13 @@ async def month_arcan(call: CallbackQuery):
 
 @dp.callback_query(F.data == "checklist")
 async def checklist(call: CallbackQuery):
-    text = """📋 <b>Получить чек-лист</b>
+    text = """📋 <b>Получить мини-гайд</b>
 
-Здесь можно вставить свою ссылку на чек-лист.
+Бесплатный мини-гайд «Тревога под контролем» 📘🕊
 
-(Отредактируй код и замени ссылку в кнопке ниже на свою)"""
+"""
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Получить чек-лист", url="https://t.me/taro_darinsight")],
+        [InlineKeyboardButton(text="Получить мини-гайд", url="https://t.me/darinsight_psy/43")],
         [InlineKeyboardButton(text="↩️ Назад", callback_data="psychology_section")]
     ])
     await call.message.edit_text(text, reply_markup=kb)
